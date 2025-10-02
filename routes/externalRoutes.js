@@ -1,8 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const xml2js = require('xml2js');
-const { sequelize } = require('../models');
-const { QueryTypes } = require('sequelize');
+const { supabase } = require('../db/supabase');
 const { authenticateToken } = require('../middleware/authMiddleware');
 
 const router = express.Router();

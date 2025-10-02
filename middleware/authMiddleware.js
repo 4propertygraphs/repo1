@@ -1,10 +1,8 @@
 const jwt = require('jsonwebtoken');
-const { User } = require('../models');
+const { supabase } = require('../db/supabase');
 
 const authenticateToken = async (req, res, next) => {
-    // Get auth header
     const token = req.headers['token'];
-
 
     if (!token) {
         return res.status(401).json({ message: 'Access denied. No token provided.' });
@@ -16,9 +14,14 @@ const authenticateToken = async (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, process.env.SECRET_KEY);
-        const user = await User.findByPk(decoded.id);
 
-        if (!user || user.token !== token) {
+        const { data: user, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', decoded.id)
+            .maybeSingle();
+
+        if (error || !user || user.token !== token) {
             return res.status(403).json({ message: 'Invalid or expired token' });
         }
 
