@@ -1,15 +1,21 @@
 const express = require('express');
-const { Agency } = require('../models');
-const externalRoutes = require('./externalRoutes');
 const { authenticateToken } = require('../middleware/authMiddleware');
 const { fetchExternalProperties, fetchExternalAgencies } = require('../utils/apiHelpers');
+const {
+    createAgency,
+    getAllAgencies,
+    getAgencyByUniqueKey,
+    getAgencyById,
+    updateAgency,
+    deleteAgency
+} = require('../db/agencyHelpers');
 
 const router = express.Router();
 
 // Create a new agency - protected
 router.post('/agencies', authenticateToken, async (req, res) => {
     try {
-        const agency = await Agency.create(req.body);
+        const agency = await createAgency(req.body);
         res.status(201).json({
             message: 'Agency created successfully',
             agency
@@ -25,8 +31,12 @@ router.post('/agencies', authenticateToken, async (req, res) => {
 
 // Get all agencies - protected
 router.get('/agencies', authenticateToken, async (req, res) => {
-    const agencies = await Agency.findAll();
-    res.json(agencies);
+    try {
+        const agencies = await getAllAgencies();
+        res.json(agencies);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 // Get agency by unique_key from header instead of URL parameter
@@ -37,29 +47,35 @@ router.get('/agency', async (req, res) => {
         return res.status(400).json({ message: 'Missing key header' });
     }
 
-    const agency = await Agency.findOne({
-        where: { unique_key: uniqueKey }
-    });
-
-    if (!agency) return res.status(404).json({ message: 'Agency not found' });
-    res.json(agency);
+    try {
+        const agency = await getAgencyByUniqueKey(uniqueKey);
+        if (!agency) return res.status(404).json({ message: 'Agency not found' });
+        res.json(agency);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 // Keeping the old route for backward compatibility, but marking as deprecated
 router.get('/agencies/:unique_key', async (req, res) => {
-    const agency = await Agency.findOne({
-        where: { unique_key: req.params.unique_key }
-    });
-
-    if (!agency) return res.status(404).json({ message: 'Agency not found' });
-    res.json(agency);
+    try {
+        const agency = await getAgencyByUniqueKey(req.params.unique_key);
+        if (!agency) return res.status(404).json({ message: 'Agency not found' });
+        res.json(agency);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 router.put('/agencies/:id', authenticateToken, async (req, res) => {
-    const agency = await Agency.findByPk(req.params.id);
-    if (!agency) return res.status(404).json({ message: 'Agency not found' });
-    await agency.update(req.body);
-    res.json({ message: 'Agency updated successfully' });
+    try {
+        const agency = await getAgencyById(req.params.id);
+        if (!agency) return res.status(404).json({ message: 'Agency not found' });
+        await updateAgency(req.params.id, req.body);
+        res.json({ message: 'Agency updated successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 let isRecountingAll = false;
